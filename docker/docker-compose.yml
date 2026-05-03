@@ -1,0 +1,12 @@
+services:
+  identity-api:
+    build:
+      context: .
+      dockerfile: src/Services/Identity/Identity.Api/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=${SQL_CONNECTION_STRING}
+      - JwtSettings__Key=${JWT_SECRET_KEY}
+      - JwtSettings__Issuer=PrinceSaasIdentity
+      - JwtSettings__Audience=PrinceSaasGateway
+    ports:
+      - "5001:8080"

@@ -1,0 +1,102 @@
+#!/bin/bash
+
+echo "🚀 Setting up InventorySaaS (.NET 9)..."
+
+# Root
+dotnet new sln -n InventorySaas
+
+mkdir -p src/ApiGateway
+mkdir -p src/Services/{Identity,Inventory,Suppliers,Customers,Invoicing,Analytics,Notifications}
+mkdir -p src/Shared
+mkdir -p tests
+mkdir -p docker
+mkdir -p k8s
+
+########################################
+# API GATEWAY
+########################################
+dotnet new webapi -n InventorySaas.Gateway -o src/ApiGateway/InventorySaas.Gateway
+dotnet sln add src/ApiGateway/InventorySaas.Gateway
+
+########################################
+# FUNCTION TO CREATE SERVICE LAYERS
+########################################
+create_service () {
+    SERVICE=$1
+
+    echo "📦 Creating $SERVICE service..."
+
+    mkdir -p src/Services/$SERVICE
+
+    dotnet new webapi -n $SERVICE.Api -o src/Services/$SERVICE/$SERVICE.Api
+    dotnet new classlib -n $SERVICE.Application -o src/Services/$SERVICE/$SERVICE.Application
+    dotnet new classlib -n $SERVICE.Domain -o src/Services/$SERVICE/$SERVICE.Domain
+    dotnet new classlib -n $SERVICE.Infrastructure -o src/Services/$SERVICE/$SERVICE.Infrastructure
+
+    dotnet sln add src/Services/$SERVICE/$SERVICE.Api
+    dotnet sln add src/Services/$SERVICE/$SERVICE.Application
+    dotnet sln add src/Services/$SERVICE/$SERVICE.Domain
+    dotnet sln add src/Services/$SERVICE/$SERVICE.Infrastructure
+
+    # Project references
+    dotnet add src/Services/$SERVICE/$SERVICE.Api reference \
+        src/Services/$SERVICE/$SERVICE.Application \
+        src/Services/$SERVICE/$SERVICE.Infrastructure
+
+    dotnet add src/Services/$SERVICE/$SERVICE.Application reference \
+        src/Services/$SERVICE/$SERVICE.Domain
+
+    dotnet add src/Services/$SERVICE/$SERVICE.Infrastructure reference \
+        src/Services/$SERVICE/$SERVICE.Application \
+        src/Services/$SERVICE/$SERVICE.Domain
+}
+
+########################################
+# CREATE ALL SERVICES
+########################################
+create_service Identity
+create_service Inventory
+create_service Suppliers
+create_service Customers
+create_service Invoicing
+create_service Analytics
+create_service Notifications
+
+########################################
+# SHARED LIBRARIES
+########################################
+dotnet new classlib -n Shared.Kernel -o src/Shared/Shared.Kernel
+dotnet new classlib -n Shared.Messaging -o src/Shared/Shared.Messaging
+dotnet new classlib -n Shared.MultiTenancy -o src/Shared/Shared.MultiTenancy
+
+dotnet sln add src/Shared/Shared.Kernel
+dotnet sln add src/Shared/Shared.Messaging
+dotnet sln add src/Shared/Shared.MultiTenancy
+
+########################################
+# TEST PROJECTS
+########################################
+dotnet new xunit -n Identity.Tests -o tests/Identity.Tests
+dotnet new xunit -n Inventory.Tests -o tests/Inventory.Tests
+dotnet new xunit -n Invoicing.Tests -o tests/Invoicing.Tests
+dotnet new xunit -n Integration.Tests -o tests/Integration.Tests
+
+dotnet sln add tests/Identity.Tests
+dotnet sln add tests/Inventory.Tests
+dotnet sln add tests/Invoicing.Tests
+dotnet sln add tests/Integration.Tests
+
+########################################
+# DOCKER FILES PLACEHOLDER
+########################################
+touch docker/docker-compose.yml
+touch docker/docker-compose.override.yml
+
+########################################
+# K8S PLACEHOLDER
+########################################
+touch k8s/gateway.yaml
+touch k8s/identity.yaml
+touch k8s/inventory.yaml
+
+echo "✅ Setup complete!"
