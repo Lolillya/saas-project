@@ -80,6 +80,8 @@ namespace Identity.Infrastructure.Data
                     .HasForeignKey(utr => utr.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
+            Seeder.Plans.SeedIdentityPlans(modelBuilder);
         }
 
     }
