@@ -2,11 +2,18 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 
 var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".env");
 if (File.Exists(envPath)) DotNetEnv.Env.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Seq(ctx.Configuration["Serilog:Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
