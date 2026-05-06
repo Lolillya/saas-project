@@ -2,10 +2,17 @@ using Identity.Application.Commands.LoginUser;
 using Identity.Application.Commands.RegisterUser;
 using Identity.Infrastructure;
 using MediatR;
+using Serilog;
 
 if (File.Exists(".env")) DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Seq(ctx.Configuration["Serilog:Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 builder.Services.AddProblemDetails();
 
@@ -50,7 +57,7 @@ app.MapPost("/auth/login", async (LoginUserCommand command, IMediator mediator) 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-
+    app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
