@@ -1,12 +1,57 @@
 services:
+  seq:
+    image: datalust/seq:latest
+    ports:
+      - "5341:80" # UI + ingestion at http://localhost:5341
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "seqadmin123"
+    volumes:
+      - seq-data:/data
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
   identity-api:
     build:
-      context: .
-      dockerfile: src/Services/Identity/Identity.Api/Dockerfile
+      context: ..
+      dockerfile: src/Services/Identity/Dockerfile
+    depends_on:
+      - sqlserver
+      - seq
     environment:
-      - ConnectionStrings__DefaultConnection=${SQL_CONNECTION_STRING}
-      - JwtSettings__Key=${JWT_SECRET_KEY}
-      - JwtSettings__Issuer=PrinceSaasIdentity
-      - JwtSettings__Audience=PrinceSaasGateway
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__IdentityDb=Server=sqlserver,1433;Database=IdentityDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - JwtSettings__Key=${JwtSettings__Key}
+      - JwtSettings__Issuer=InventorySaaS.Identity
+      - JwtSettings__Audience=InventorySaaS
+      - Serilog__Seq__ServerUrl=http://seq:5341
     ports:
       - "5001:8080"
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: src/ApiGateway/Dockerfile
+    depends_on:
+      - identity-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - JwtSettings__Key=${JwtSettings__Key}
+      - JwtSettings__Issuer=InventorySaaS.Identity
+      - JwtSettings__Audience=InventorySaaS
+      - ReverseProxy__Clusters__identity-cluster__Destinations__destination1__Address=http://identity-api:8080/
+      - Serilog__Seq__ServerUrl=http://seq:5341
+    ports:
+      - "5000:8080"
+
+volumes:
+  seq-data:
+  sqlserver-data:
