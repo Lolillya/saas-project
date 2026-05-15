@@ -1,8 +1,10 @@
 using Identity.Application.Commands.LoginUser;
 using Identity.Application.Commands.RegisterUser;
 using Identity.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using MediatR;
 using Serilog;
+using Identity.Infrastructure.Data;
 
 if (File.Exists(".env")) DotNetEnv.Env.Load();
 
@@ -21,6 +23,12 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(RegisterUserCommand).Assembly));
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
