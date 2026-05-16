@@ -26,7 +26,6 @@ namespace Identity.Infrastructure.Data.Seeder
                 }
             };
             modelBuilder.Entity<Plan>().HasData(Plan);
-
         }
     }
 }
