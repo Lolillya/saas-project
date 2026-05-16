@@ -55,6 +55,17 @@ namespace Identity.Application.Commands.RegisterUser
             await _repository.AddUserAsync(user, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
 
+            var role = await _repository.GetUserRoleAsync(0, 0, cancellationToken);
+            var roleEntity = await _repository.GetRoleByNameAsync(request.Role, cancellationToken);
+            await _repository.AddUserTenantRoleAsync(new UserTenantRoles
+            {
+                UserId = user.Id,
+                TenantId = tenant.TenantId,
+                RoleId = roleEntity!.Id,
+                AssignedAt = DateTime.UtcNow
+            }, cancellationToken);
+            await _repository.SaveChangesAsync(cancellationToken);
+
             var tokenResult = _tokenServices.GenerateToken(user, tenant.Slug, request.Role);
 
             return new AuthResponse(tokenResult.Token, refreshTokan, tokenResult.ExpiresAt);

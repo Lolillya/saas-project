@@ -21,14 +21,16 @@ namespace Identity.Application.Commands.LoginUser
         public async Task<AuthResponse> Handle(LoginUserCommand request, CancellationToken cancellationToken)
         {
             var user = await _repository.GetUserByEmailAsync(
-                request.Email.ToLowerInvariant().Trim(), cancellationToken
-            );
+                request.Email.ToLowerInvariant().Trim(), cancellationToken);
 
             if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
                 throw new InvalidOperationException("Invalid email or password.");
 
             if (!user.IsActive)
                 throw new InvalidOperationException("User account is inactive.");
+
+            var role = await _repository.GetUserRoleAsync(user.Id, user.TenantId, cancellationToken)
+                ?? "Admin";
 
             var refreshToken = _tokenServices.GenerateRefreshToken();
             user.RefreshToken = refreshToken;
@@ -37,7 +39,7 @@ namespace Identity.Application.Commands.LoginUser
             await _repository.UpdateUserAsync(user, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
 
-            var tokenResult = _tokenServices.GenerateToken(user, user.Tenant.Slug, "Admim");
+            var tokenResult = _tokenServices.GenerateToken(user, user.Tenant.Slug, role);
 
             return new AuthResponse(tokenResult.Token, refreshToken, tokenResult.ExpiresAt);
         }
