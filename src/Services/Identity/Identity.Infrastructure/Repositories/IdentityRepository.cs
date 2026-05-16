@@ -17,6 +17,9 @@ namespace Identity.Infrastructure.Repositories
         public Task<AspNetUsers?> GetUserByEmailAsync(string email, CancellationToken ct = default)
             => _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Email == email, ct);
 
+        public Task<AspNetUsers?> GetUserByRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+            => _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.RefreshToken == refreshToken, ct);
+
         public Task<bool> EmailExistsAsync(string email, CancellationToken ct = default)
             => _context.Users.AnyAsync(u => u.Email == email, ct);
 
@@ -33,10 +36,26 @@ namespace Identity.Infrastructure.Repositories
         public async Task AddUserAsync(AspNetUsers user, CancellationToken ct = default)
             => await _context.Users.AddAsync(user, ct);
 
-        public async Task UpdateUserAsync(AspNetUsers user, CancellationToken ct = default)
-            => await Task.FromResult(_context.Users.Update(user));
+        public Task UpdateUserAsync(AspNetUsers user, CancellationToken ct = default)
+        {
+            _context.Users.Update(user);
+            return Task.CompletedTask;
+        }
 
         public async Task SaveChangesAsync(CancellationToken ct = default)
             => await _context.SaveChangesAsync(ct);
+
+        public async Task AddUserTenantRoleAsync(UserTenantRoles userTenantRole, CancellationToken ct = default)
+            => await _context.UserTenantRoles.AddAsync(userTenantRole, ct);
+
+        public Task<string?> GetUserRoleAsync(int userId, int tenantId, CancellationToken ct = default)
+            => _context.UserTenantRoles
+                .Where(r => r.UserId == userId && r.TenantId == tenantId)
+                .Include(r => r.Role)
+                .Select(r => r.Role.RoleName)
+                .FirstOrDefaultAsync(ct);
+
+        public Task<Roles?> GetRoleByNameAsync(string roleName, CancellationToken ct = default)
+            => _context.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName, ct);
     }
 }
